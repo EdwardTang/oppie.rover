@@ -1,0 +1,50 @@
+syntax = "proto2";
+
+package oppie.comm;
+
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+
+// Task card created by Planner and sent to Executor
+message TaskCard {
+  required string task_id = 1; // Unique identifier
+  required string goal_description = 2; // Task goal description
+  repeated TaskStep steps = 3; // List of execution steps
+  optional TraceContext trace_context = 4; // For cross-protocol request tracing
+  
+  // Execution context and configuration
+  map<string, string> context_data = 5; // Context information (environment variables, configuration, etc.)
+  repeated string required_capabilities = 6; // List of required capabilities
+  optional int32 timeout_seconds = 7; // Timeout in seconds
+  optional double sem_confidence = 8; // Semantic accuracy score [0.0, 1.0]
+  
+  // Metadata
+  optional google.protobuf.Timestamp created_at = 9; // Creation time
+  optional string planner_version = 10; // Planner version
+  
+  // Extension fields
+  map<string, string> metadata = 11; // Custom metadata
+}
+
+// Task execution step (extends common Step)
+message TaskStep {
+  required string instruction = 1; // Step instruction
+  optional string expected_outcome = 2; // Expected result
+  repeated string tool_use = 3; // Tools that need to be used
+  
+  // Validation conditions
+  repeated ValidationCriteria validation = 4; // Validation criteria
+  
+  // Dependencies
+  repeated int32 depends_on = 5; // Indices of dependent steps
+  
+  // Metadata
+  map<string, string> metadata = 6; // Step-level metadata
+}
+
+// Validation criteria
+message ValidationCriteria {
+  required string type = 1; // Validation type (file_exists, output_contains, etc.)
+  required string criteria = 2; // Specific validation condition
+  optional string error_message = 3; // Error message when validation fails
+} 

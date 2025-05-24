@@ -1,0 +1,10 @@
+{
+  "error": "\u89e3\u6790\u7ed3\u679c\u5931\u8d25",
+  "stdout": "",
+  "stderr": "  File \"C:\\Users\\tyb90\\Projects\\oppie.xyz\\oppie_xyz\\seam_comm\\benchmarks\\nats_bench.py\", line 574\n    async_publish=args.async,\n                       ^^^^^\nSyntaxError: invalid syntax\n",
+  "prometheus": {
+    "cpu": {},
+    "memory": {},
+    "backlog": {}
+  }
+}

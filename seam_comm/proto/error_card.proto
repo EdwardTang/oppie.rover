@@ -1,0 +1,25 @@
+syntax = "proto2";
+
+package oppie.comm;
+
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+
+// Error card returned by Executor when execution fails
+message ErrorCard {
+  required string task_id = 1; // Associated TaskCard ID
+  required string error_message = 2;
+  optional string stack_trace = 3;
+  enum ErrorCategory {
+    SANDBOX_VIOLATION = 0; // Sandbox violation
+    TIMEOUT = 1; // Execution timeout
+    EXECUTION_ERROR = 2; // Execution error
+    CAPABILITY_MISSING = 3; // Required capability unavailable
+    INTERNAL_ERROR = 4; // Internal error
+    OTHER = 5; // Other errors
+  }
+  required ErrorCategory category = 4;
+  repeated LogEntry diagnostic_logs = 5; // Diagnostic logs
+  optional google.protobuf.Timestamp error_time = 6;
+  optional TraceContext trace_context = 7; // For cross-protocol request tracing
+} 

@@ -1,0 +1,31 @@
+syntax = "proto2";
+
+package oppie.comm;
+
+import "common.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+// Event message for asynchronous notifications within the system
+message Event {
+  required string event_id = 1;
+  required string event_type = 2; // Such as "gui_interaction", "semantic_clarification_request", etc.
+  required google.protobuf.Timestamp timestamp = 3;
+  optional google.protobuf.Any payload = 4; // Data payload specific to the event
+  optional string source_agent_id = 5; // Source agent of the event
+  optional TraceContext trace_context = 6; // For cross-protocol request tracing
+}
+
+// Semantic clarification request as Event payload
+message SemanticClarificationRequest {
+  required string uncertain_term = 1; // Uncertain term
+  required string context_hash = 2; // Hash of original context containing the term
+  optional string original_message_id = 3; // Original message ID
+}
+
+// GUI event as Event payload
+message GuiEvent {
+  required string event_name = 1; // Such as "click", "input", "state_change", etc.
+  required string ui_element_id = 2; // UI element identifier
+  map<string, string> properties = 3; // Event properties
+} 

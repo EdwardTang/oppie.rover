@@ -1,0 +1,129 @@
+# NATS Adapter Integration Test Matrix
+# Lists all test scenarios, their purposes, load profiles, and expected assertions
+
+scenarios:
+  - name: baseline_pubsub
+    description: "Baseline Publish/Subscribe without faults"
+    load_profile:
+      message_count: 10000
+      message_size: 1024  # bytes
+      publish_rate: 1000  # msg/sec
+      subscribers: 1
+    assertions:
+      max_message_loss: 0.0  # No message loss allowed
+      max_latency_p50: 5.0   # ms
+      max_latency_p95: 20.0  # ms
+      max_latency_p99: 50.0  # ms
+  
+  - name: high_load_saturation
+    description: "High-Load Saturation test (back-pressure)"
+    load_profile:
+      message_count: 50000
+      message_size: 2048  # bytes
+      publish_rate: 5000  # msg/sec
+      subscribers: 3
+    assertions:
+      max_message_loss: 0.01  # 0.01% message loss allowed under saturation
+      max_latency_p50: 50.0   # ms
+      max_latency_p95: 200.0  # ms
+      max_latency_p99: 500.0  # ms
+      max_backlog: 10000      # messages
+  
+  - name: broker_restart
+    description: "Broker Restart test (server SIGTERM & restart)"
+    load_profile:
+      message_count: 5000
+      message_size: 1024  # bytes
+      publish_rate: 100   # msg/sec
+      subscribers: 1
+    fault_injection:
+      type: container_restart
+      target: nats
+      timing: 2000  # Restart after 2000 messages
+    assertions:
+      max_message_loss: 0.01  # 0.01% message loss allowed during restart
+      max_recovery_time: 2000  # ms
+      reconnect_successful: true
+  
+  - name: client_network_partition
+    description: "Client Network Partition test (DROP packets → restore)"
+    load_profile:
+      message_count: 5000
+      message_size: 1024  # bytes
+      publish_rate: 100   # msg/sec
+      subscribers: 1
+    fault_injection:
+      type: network_drop
+      target: client
+      duration: 5  # seconds
+      timing: 2000  # After 2000 messages
+    assertions:
+      max_message_loss: 0.01  # 0.01% message loss allowed during network outage
+      max_recovery_time: 3000  # ms
+      reconnect_successful: true
+  
+  - name: duplicate_message_id
+    description: "Duplicate Message-ID test (exactly-once check)"
+    load_profile:
+      message_count: 5000
+      message_size: 1024  # bytes
+      publish_rate: 100   # msg/sec
+      subscribers: 1
+    fault_injection:
+      type: duplicate_messages
+      count: 100  # Number of messages to duplicate
+    assertions:
+      duplicate_rate: 0.0  # No duplicates should be processed
+  
+  - name: compression_batch_ack_comparison
+    description: "Compression & Batch ACK off/on comparison"
+    variants:
+      - name: no_compression_no_batch
+        config:
+          compression_enabled: false
+          batch_ack_enabled: false
+      - name: compression_no_batch
+        config:
+          compression_enabled: true
+          batch_ack_enabled: false
+      - name: no_compression_batch
+        config:
+          compression_enabled: false
+          batch_ack_enabled: true
+      - name: compression_batch
+        config:
+          compression_enabled: true
+          batch_ack_enabled: true
+    load_profile:
+      message_count: 10000
+      message_size: 5120  # bytes (larger to see compression effect)
+      publish_rate: 500   # msg/sec
+      subscribers: 1
+    assertions:
+      compression_ratio_min: 0.3  # For compression enabled variants
+      batch_efficiency_min: 0.5   # For batch enabled variants
+  
+  - name: persistence_comparison
+    description: "Persistence Disabled vs Enabled (control group)"
+    variants:
+      - name: persistence_disabled
+        config:
+          persistence_enabled: false
+      - name: persistence_enabled
+        config:
+          persistence_enabled: true
+    load_profile:
+      message_count: 10000
+      message_size: 1024  # bytes
+      publish_rate: 500   # msg/sec
+      subscribers: 1
+    assertions:
+      max_latency_diff_p50: 5.0   # ms (acceptable overhead for persistence)
+      max_throughput_decrease: 0.2  # 20% throughput decrease allowed with persistence
+
+test_environment:
+  warm_up_messages: 1000  # Discard first N messages to avoid cold-start skew
+  repetitions: 3          # Run each scenario at least 3 times
+  seed: 12345             # Fixed seed for reproducibility
+  cpu_pinning: true       # Use container-pinned CPUs
+  metrics_scrape_interval: 0.5  # seconds 

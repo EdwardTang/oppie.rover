@@ -1,0 +1,53 @@
+syntax = "proto2";
+
+package oppie.comm;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+import "common.proto";
+
+// RPC service definition for use by gRPC adapter
+service OppieRpcService {
+  // Generic RPC method call
+  rpc Call (RpcRequest) returns (RpcResponse);
+  
+  // Event stream, server pushes events to client
+  rpc Subscribe (SubscriptionRequest) returns (stream Event);
+}
+
+// RPC request
+message RpcRequest {
+  required string method = 1;  // Method name to call
+  optional bytes params = 2;   // Serialized parameters (JSON)
+  required string id = 3;      // Request ID
+  optional TraceContext trace_context = 4; // Trace context
+}
+
+// RPC response
+message RpcResponse {
+  required string id = 1;      // Corresponding request ID
+  optional bytes result = 2;   // Serialized result (JSON)
+  optional ErrorInfo error = 3; // Error information (if any)
+  optional TraceContext trace_context = 4; // Trace context
+}
+
+// RPC error information
+message ErrorInfo {
+  required int32 code = 1;     // Error code
+  required string message = 2; // Error message
+  optional bytes data = 3;     // Additional error data (JSON)
+}
+
+// Event subscription request
+message SubscriptionRequest {
+  repeated string event_types = 1; // List of event types to subscribe to
+  optional TraceContext trace_context = 2; // Trace context
+}
+
+// Event message
+message Event {
+  required string type = 1;    // Event type
+  required bytes data = 2;     // Serialized event data (JSON)
+  required string id = 3;      // Event ID
+  optional TraceContext trace_context = 4; // Trace context
+} 

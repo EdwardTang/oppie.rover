@@ -1,0 +1,82 @@
+version: '3'
+
+services:
+  nats:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4222:4222"  # 客户端连接端口
+      - "8222:8222"  # HTTP监控端口
+    volumes:
+      - ./data/jetstream:/data/jetstream
+    networks:
+      - test-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  toxiproxy:
+    image: shopify/toxiproxy
+    ports:
+      - "8474:8474"  # Toxiproxy API
+      - "4223:4223"  # 代理到NATS的端口
+    networks:
+      - test-network
+    depends_on:
+      - nats
+    restart: unless-stopped
+    # 使用entrypoint设置代理，将4223端口代理到nats:4222
+    entrypoint: sh -c "toxiproxy-server & sleep 5 && toxiproxy-cli create nats -l 0.0.0.0:4223 -u nats:4222 && tail -f /dev/null"
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - test-network
+    depends_on:
+      - nats
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - test-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  client_metrics:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - SEAM_METRICS_HTTP=1
+      - PYTHONUNBUFFERED=1
+    networks:
+      - test-network
+    depends_on:
+      - nats
+    restart: unless-stopped
+    entrypoint: sh -c "python -m aiohttp.web -H 0.0.0.0 -P 9109 oppie_xyz.seam_comm.adapters.nats.metrics:metrics_app"
+    ports:
+      - "9109:9109"
+
+networks:
+  test-network:
+    driver: bridge 

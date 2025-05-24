@@ -1,0 +1,23 @@
+syntax = "proto2";
+
+package oppie.comm;
+
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+
+// Result card returned by Executor with execution results
+message ResultCard {
+  required string task_id = 1; // Associated TaskCard ID
+  enum Status {
+    SUCCESS = 0;
+    FAILURE = 1;
+    PARTIAL = 2; // Partial success
+  }
+  required Status status = 2;
+  optional string output_summary = 3; // Result summary
+  map<string, Artifact> artifacts = 4; // Output artifacts (files, data, etc.)
+  repeated LogEntry diagnostic_logs = 5; // Diagnostic logs
+  optional google.protobuf.Timestamp completion_time = 6;
+  optional TraceContext trace_context = 7; // For cross-protocol request tracing
+  map<string, string> metadata = 8;
+} 
